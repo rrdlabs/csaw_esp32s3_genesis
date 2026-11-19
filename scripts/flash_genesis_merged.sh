@@ -20,8 +20,10 @@ fi
 source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1 || true
 
 echo "Flashing $IMAGE to $PORT ..."
+# esptool v5 requires the flash-mode/size/freq options AFTER the write-flash
+# subcommand; placing them before it fails with "No such option '--flash-mode'".
 python -m esptool --chip esp32s3 --port "$PORT" -b 460800 \
     --before default-reset --after hard-reset \
-    --flash-mode dio --flash-size 16MB --flash-freq 80m \
-    write-flash 0x0 "$IMAGE"
+    write-flash --flash-mode dio --flash-size 16MB --flash-freq 80m \
+    0x0 "$IMAGE"
 echo "Done. Run 'idf.py -p $PORT monitor' to verify bringup and the >=30% brightness gate."

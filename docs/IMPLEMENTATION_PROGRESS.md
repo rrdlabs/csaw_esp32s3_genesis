@@ -10,14 +10,14 @@
 
 | Field | Value |
 | --- | --- |
-| Last completed increment | Merged Genesis release image + offline verification (v1.1.0) |
-| Current version | `1.1.0` |
-| Active work package | WP9 — secondary BSP repository, **BLOCKED** on physical hardware gate |
-| Next concrete action | Flash `build/merged-binary.bin` to a connected Genesis Rev 1 board and verify bringup/brightness; then create the BSP repo (content manifest prepared below) |
-| Last verification | Merged image built and verified: `/tmp/opencode/csaw_merge_bin.log` exit 0; `MERGED_IMAGE_INTEGRITY = PASS`; image headers/partition table valid. Final firmware build `/tmp/opencode/csaw_wp7_build23.log` exit 0 |
-| Commands attempted | WP1–WP8 as logged below; WP9 `idf.py merge-bin` (green), `esptool image-info`/`gen_esp32part.py` (green), hardware probe (`ls /dev/ttyUSB*`, `lsusb`, `esptool chip-id`) → no device. Exact commands in `docs/MERGED_IMAGE.md` §5–§6 |
-| Blockers | **H1 open:** no physical board / serial device in this environment, so hardware cannot pass. Firmware and merged image are complete; BSP repo creation awaits operator decision |
-| Stop/await condition | Awaiting operator decision on the hardware-gated BSP repo (create now from build-verified specs, or wait for a connected board) |
+| Last completed increment | First physical flash attempt recorded; bringup FAIL documented; flash helper fixed (v1.1.1) |
+| Current version | `1.1.1` |
+| Active work package | WP10 — secondary BSP repository (operator approved creation despite hardware failure) |
+| Next concrete action | Finish and push `rrdlabs/csaw-genesis-bsp`, labelled with the hardware FAIL; re-test on a genuinely powered Rev 1 board when available |
+| Last verification | Flash PASS (`/tmp/opencode/csaw_flash_genesis.log`, hash verified); boot/bringup FAIL (`/tmp/opencode/csaw_boot_monitor.log`, I²C scan `/tmp/opencode/csaw_probe_monitor.log` found zero devices). Offline build/merge checks from 1.1.0 remain PASS |
+| Commands attempted | WP1–WP9 as logged below; WP9 hardware attempt: `esptool write-flash` (PASS), serial monitor (FAIL), standalone I²C scan firmware (zero devices), board then disconnected. Exact commands in `docs/MERGED_IMAGE.md` §6 |
+| Blockers | **H2 open:** attached device had no responding I²C peripherals (expander/PMU/RTC/touch), so hardware did not pass; device disappeared before GPIO-level diagnosis. H1 (no board) is closed — a board was attached briefly |
+| Stop/await condition | Complete the approved BSP repo; hardware acceptance still requires a powered, confirmed Rev 1 board |
 
 ### Interruption recovery (run these first)
 
@@ -46,13 +46,20 @@ head -20 CHANGELOG.md                             # latest increment + verificat
 | WP7 | §10 | Embedded MicroPython component, on-demand only, SD-only write sandbox | **DONE** (IDF 6.1 build passed) | 0.9.0 |
 | WP8 | §11 | Build attempt (IDF 6.1), push attempt, final DoD verification checklist | **DONE** | 1.0.0 |
 | WP9 | operator follow-up | Merged 16 MB flash image; offline image verification; flash helper | **DONE** | 1.1.0 |
-| WP10 | operator follow-up | Secondary board-spec BSP repo for board developers | **BLOCKED on hardware** (H1) | — |
+| WP10 | operator follow-up | Secondary board-spec BSP repo for board developers | **IN PROGRESS** — operator approved creation despite hardware FAIL (H2) | — |
 
 **Order rationale:** WP1 establishes the display/touch bus and boot sequence every other package depends on. WP4 is done early because WP3/WP6/WP7 write through the storage policy. WP8 is last so it verifies the complete revision. WP9 produces the distributable image; WP10 is gated by the operator on physical hardware passing. WP0 exists because the operator requires documentation/versioning to lead implementation so interruptions cannot corrupt chronological progress.
 
 ---
 
 ## Increment log (append-only; newest first)
+
+### 1.1.1 — 2026-11-18 — hardware flash attempt: write PASS, bringup FAIL
+
+- **Summary:** A device appeared at `/dev/ttyACM0` and the merged image was written and hash-verified successfully. The flashed firmware booted (ESP32-S3, PSRAM, CsAW app) but hardware bringup failed: I²C expander `0x20` timed out, a standalone scan found zero I²C devices, and SD/UI initialization cascaded into errors. The device then disconnected. Fixed the esptool v5 option-order defect found during the attempt. Hardware is explicitly **NOT passed**.
+- **Files touched:** `scripts/flash_genesis_merged.sh`, `docs/MERGED_IMAGE.md`, `VERSION.md`, `CHANGELOG.md`, this ledger.
+- **Verification result:** flash `esptool ... write-flash --flash-mode dio --flash-size 16MB --flash-freq 80m 0x0 build/merged-binary.bin` → exit 0, `Hash of data verified`; boot log → `IO expander not found at 0x20: ESP_ERR_TIMEOUT`, `Hardware bringup FAILED`; I²C scan → zero devices `0x01..0x77` on SDA15/SCL14 at 400 kHz/100 kHz and swapped pins. Vendor source confirms `0x20`/SDA15/SCL14 are correct, so root cause is unresolved (likely unpowered/absent peripherals on the attached device).
+- **Next:** WP10 — finish the operator-approved BSP repo with this failure clearly recorded.
 
 ### 1.1.0 — 2026-11-18 — WP9: merged Genesis flash image
 
@@ -159,7 +166,7 @@ head -20 CHANGELOG.md                             # latest increment + verificat
 | # | Requirement | Evidence | Result |
 | --- | --- | --- | --- |
 | 1 | Zero unapproved donor-brand strings | `grep -rni 'mimiclaw' --exclude-dir=.git --exclude-dir=build .` → 0 hits; filename scan → 0 hits; incidental English "mimic" in vendored upstream comments annotated in `docs/MICROPYTHON.md` | PASS |
-| 2 | Clean ESP-IDF 6.1 build attempt recorded | `/tmp/opencode/csaw_wp7_build23.log`, exact command quoted above, exit `0`, `Project build complete`, `csaw.bin` 0x1ecac0 | PASS |
+| 2 | Clean ESP-IDF 6.1 build attempt recorded | `/tmp/opencode/csaw_wp7_build23.log`, exact command quoted above, exit `0`, `Project build complete`; merged rebuild produced `csaw.bin` 0x1ecad0 (4 % free) | PASS |
 | 3 | GitHub push attempt recorded | `gh repo create rrdlabs/csaw_esp32s3_genesis --private --confirm` → `https://github.com/rrdlabs/csaw_esp32s3_genesis` (exit 0); `git push -u origin master` → `* [new branch] master -> master`, tracking set, exit 0 | PASS |
 | 4 | Bringup order + ≥30% brightness verified in code/docs | `components/csaw_hal/csaw_hal.c:1094-1104` literal IO expander → PMU → SH8601; gate at `csaw_hal.c:489-496`; `main/csaw.c:157-165` asserts before UI; `docs/HARDWARE_BRINGUP.md` | PASS |
 | 5 | Storage split verified in code/docs | `main/storage/csaw_storage.c`, `main/memory/session_mgr.c`, `main/tools/tool_files.c`, `docs/STORAGE_POLICY.md`; flash keeps only config/long-term memory/secrets | PASS |
@@ -171,13 +178,15 @@ head -20 CHANGELOG.md                             # latest increment + verificat
 
 ---
 
-## WP10 — secondary BSP repository (hardware-gated, prepared not created)
+## WP10 — secondary BSP repository (operator-approved, hardware FAIL recorded)
 
 The operator specified: create a secondary BSP repo "if hardware passes", solely
 for board developers needing this exact board spec support in their own
-projects. Hardware **cannot pass here** (H1, see `docs/MERGED_IMAGE.md` §6), so
-no repo has been created. The content manifest below is prepared so that a
-"go" decision is a single mechanical step. Everything in it is derived from the
+projects. A board was attached and flashed, but **bringup failed** (H2, see
+`docs/MERGED_IMAGE.md` §6). When asked how to proceed, the operator chose
+**"Create BSP now, mark pending"**. The repo `rrdlabs/csaw-genesis-bsp` is
+therefore being created with the hardware failure explicitly recorded — not
+silently presented as verified. Everything below is derived from the
 build-verified firmware, not guessed.
 
 | Proposed path | Source in `csaw_esp32s3_genesis` | Purpose |
@@ -195,12 +204,12 @@ build-verified firmware, not guessed.
 
 The BSP repo must **not** contain the agent/provider/UI/MicroPython firmware:
 its scope is board spec support only, so downstream projects bring their own
-application. Proposed name: `rrdlabs/csaw-genesis-bsp` (private or public per
-operator choice). It must be marked "hardware verification pending" until a
-physical Rev 1 board is flashed and the bringup log confirms the order and
-brightness gate.
+application. Name: `rrdlabs/csaw-genesis-bsp`. It is marked
+**"hardware verification FAILED on first test (no I²C devices)"**, not merely
+pending, until a powered, confirmed Rev 1 board produces a bringup log that
+confirms the order and brightness gate.
 
-**Operator decision required:** (a) create the BSP repo now from this
-build-verified manifest and label hardware verification pending, or (b) hold
-until the board is attached and flashed. No ambiguity is being used to skip the
-requirement — the work is prepared and the gate is recorded explicitly.
+**Operator decision applied:** the operator selected option (a) — create now
+and mark the hardware status explicitly. No ambiguity was used to skip a
+requirement: the flash was attempted, the failure was recorded verbatim, and
+the BSP is published with that caveat.

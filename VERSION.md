@@ -1,9 +1,10 @@
 # CsAW Version
 
-Current revision: **1.1.0**
+Current revision: **1.1.1**
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| 1.1.1 | 2026-11-18 | Recorded first physical flash attempt: image write/hash PASS, board bringup FAIL (no I²C devices); fixed esptool v5 option order in flash helper and docs. |
 | 1.1.0 | 2026-11-18 | Release artifact: merged 16 MB flash image for the Genesis Rev 1 board, byte-level image verification, flash helper, and recorded hardware-verification blocker. |
 | 1.0.0 | 2026-11-18 | WP8: complete single-revision delivery — clean IDF 6.1 build, GitHub push, final DoD checklist and verification. |
 | 0.9.0 | 2026-11-18 | WP7: vendored on-demand MicroPython VM, SD-only write sandbox, IDF 6.1 compatibility patch set; clean build. |

@@ -19,6 +19,32 @@ All notable changes to this repository are documented here. Every change bumps t
 
 Chronological implementation state is tracked in [docs/IMPLEMENTATION_PROGRESS.md](docs/IMPLEMENTATION_PROGRESS.md).
 
+## [1.1.1] - 2026-11-18
+
+### Summary
+
+Recorded the first physical flash attempt on a device that appeared at
+`/dev/ttyACM0`. Writing the merged image and verifying its hash **passed**, but
+firmware bringup **failed**: the IO expander at `0x20` timed out and an
+independent I²C scan found zero devices on the bus, so the SD card and on-device
+UI also failed to initialize. The device disconnected before further diagnosis.
+Hardware is therefore explicitly **not passed**. Also fixed a real defect found
+during the attempt: esptool v5 requires `--flash-mode/--flash-size/--flash-freq`
+after the `write-flash` subcommand; the helper script and docs are corrected.
+
+### Files touched
+
+- `scripts/flash_genesis_merged.sh` — moved esptool flash options after `write-flash` (the previous order fails with `No such option '--flash-mode'`).
+- `docs/MERGED_IMAGE.md` — §3 flash command corrected; §6 replaced with the actual flash/boot results, I²C scan evidence and explicit FAIL status; §7 updated.
+- `VERSION.md`, `CHANGELOG.md`, `docs/IMPLEMENTATION_PROGRESS.md` — 1.1.1 increment.
+
+### Verification result
+
+- Flash: `python -m esptool --chip esp32s3 --port /dev/ttyACM0 -b 460800 --before default-reset --after hard-reset write-flash --flash-mode dio --flash-size 16MB --flash-freq 80m 0x0 build/merged-binary.bin` → exit 0, `Wrote 16711680 bytes`, `Hash of data verified.` (`/tmp/opencode/csaw_flash_genesis.log`).
+- Boot: `/tmp/opencode/csaw_boot_monitor.log` → `I2C0 ready (SDA=15 SCL=14, 400000 Hz)` then `IO expander not found at 0x20: ESP_ERR_TIMEOUT`, `Hardware bringup FAILED`, `SD card mount /sd unavailable`, `On-device UI init FAILED`.
+- I²C scan: `/tmp/opencode/csaw_probe_monitor.log` → no addresses `0x01..0x77` responded on SDA15/SCL14 (400 kHz and 100 kHz) or swapped pins. Vendor source confirms the pin/address values are correct for Rev 1; root cause unresolved because the device disconnected.
+- Script: option order corrected and validated against the successful flash command above.
+
 ## [1.1.0] - 2026-11-18
 
 ### Summary
