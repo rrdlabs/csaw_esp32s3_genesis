@@ -19,6 +19,27 @@ All notable changes to this repository are documented here. Every change bumps t
 
 Chronological implementation state is tracked in [docs/IMPLEMENTATION_PROGRESS.md](docs/IMPLEMENTATION_PROGRESS.md).
 
+## [1.1.0] - 2026-11-18
+
+### Summary
+
+Built and verified the single-file merged flash image for the Waveshare ESP32-S3-Touch-AMOLED-1.8 Rev 1 ("Genesis") board. The raw 16 MB image (`build/merged-binary.bin`, SHA-256 `bc99701b…`) embeds bootloader, partition table, otadata, app and SPIFFS at their flash offsets. Every region was byte-compared against its source binary, padding was confirmed `0xFF`, both image headers verified valid ESP32-S3/IDF 6.1 checksums and hashes, and the partition table parsed cleanly. Added a flash helper script and a release manifest. Physical hardware verification was attempted but is **blocked**: no board/serial device is attached in this environment, so the operator-gated secondary BSP repository was not created.
+
+### Files touched
+
+- `docs/MERGED_IMAGE.md` (new) — release manifest, artifact digests, partition layout, reproduce/flash commands, offline verification table, exact hardware blocker commands, physical-board checklist.
+- `scripts/flash_genesis_merged.sh` (new) — port-parameterised esptool wrapper for the merged image.
+- `VERSION.md`, `CHANGELOG.md`, `docs/IMPLEMENTATION_PROGRESS.md` — 1.1.0 increment and hardware gate decision.
+
+### Verification result
+
+- Merge: `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py merge-bin' > /tmp/opencode/csaw_merge_bin.log 2>&1` → exit `0`, `Successfully created ESP32-S3 image.`, `Wrote 0xff0000 bytes to file 'merged-binary.bin', ready to flash to offset 0x0.`
+- Integrity: Python byte comparison of all five regions inside `merged-binary.bin` → `MERGED_IMAGE_INTEGRITY = PASS`; all inter-region gaps `0xFF`.
+- Headers: `esptool image-info bootloader/bootloader.bin` → checksum `0x86` valid; `esptool image-info csaw.bin` → checksum `0x08` valid, Chip ID 9, 16MB/DIO/80m, ESP-IDF v6.1.
+- Partitions: `gen_esp32part.py partition-table.bin` → `Verifying table...` OK.
+- Script: `bash -n scripts/flash_genesis_merged.sh` → syntax OK.
+- Hardware: `ls /dev/ttyUSB* /dev/ttyACM*` → none; `lsusb` → root hubs only; `esptool --chip esp32s3 chip-id` → `A fatal error occurred: Could not connect to an Espressif device on any of the 8 available serial ports.` Exact blocker recorded in `docs/MERGED_IMAGE.md` §6.
+
 ## [1.0.0] - 2026-11-18
 
 ### Summary

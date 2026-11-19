@@ -1,9 +1,10 @@
 # CsAW Version
 
-Current revision: **1.0.0**
+Current revision: **1.1.0**
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| 1.1.0 | 2026-11-18 | Release artifact: merged 16 MB flash image for the Genesis Rev 1 board, byte-level image verification, flash helper, and recorded hardware-verification blocker. |
 | 1.0.0 | 2026-11-18 | WP8: complete single-revision delivery — clean IDF 6.1 build, GitHub push, final DoD checklist and verification. |
 | 0.9.0 | 2026-11-18 | WP7: vendored on-demand MicroPython VM, SD-only write sandbox, IDF 6.1 compatibility patch set; clean build. |
 | 0.8.0 | 2026-11-18 | WP6: unrestricted SD-card file tools (create_dir/move/copy/delete) confined to `/sd/csaw`. |

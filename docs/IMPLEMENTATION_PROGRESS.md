@@ -10,14 +10,14 @@
 
 | Field | Value |
 | --- | --- |
-| Last completed increment | WP8 final delivery / Definition of Done verification (v1.0.0) |
-| Current version | `1.0.0` |
-| Active work package | None — WP0–WP8 complete; the single Section 1–10 revision is delivered |
-| Next concrete action | None. Optional: review the pushed repository and flash to hardware |
-| Last verification | Final IDF 6.1 build PASSED (`/tmp/opencode/csaw_wp7_build23.log`, `Project build complete`, `csaw.bin` 0x1ecac0); branding grep zero hits; push result recorded below |
-| Commands attempted | WP1–WP4 as logged below; WP5 `csaw_wp5_build1.log` (`newlib`), WP7 `csaw_wp7_build1..23.log` (all compile/link blockers resolved, final build green). Exact commands are quoted in the increment log and CHANGELOG |
-| Blockers | None open. All preflight and IDF 6.1 blockers resolved and documented |
-| Stop/await condition | Revision complete; stop here unless the operator requests hardware flashing or repo visibility changes |
+| Last completed increment | Merged Genesis release image + offline verification (v1.1.0) |
+| Current version | `1.1.0` |
+| Active work package | WP9 — secondary BSP repository, **BLOCKED** on physical hardware gate |
+| Next concrete action | Flash `build/merged-binary.bin` to a connected Genesis Rev 1 board and verify bringup/brightness; then create the BSP repo (content manifest prepared below) |
+| Last verification | Merged image built and verified: `/tmp/opencode/csaw_merge_bin.log` exit 0; `MERGED_IMAGE_INTEGRITY = PASS`; image headers/partition table valid. Final firmware build `/tmp/opencode/csaw_wp7_build23.log` exit 0 |
+| Commands attempted | WP1–WP8 as logged below; WP9 `idf.py merge-bin` (green), `esptool image-info`/`gen_esp32part.py` (green), hardware probe (`ls /dev/ttyUSB*`, `lsusb`, `esptool chip-id`) → no device. Exact commands in `docs/MERGED_IMAGE.md` §5–§6 |
+| Blockers | **H1 open:** no physical board / serial device in this environment, so hardware cannot pass. Firmware and merged image are complete; BSP repo creation awaits operator decision |
+| Stop/await condition | Awaiting operator decision on the hardware-gated BSP repo (create now from build-verified specs, or wait for a connected board) |
 
 ### Interruption recovery (run these first)
 
@@ -45,12 +45,21 @@ head -20 CHANGELOG.md                             # latest increment + verificat
 | WP6 | §9 | SD-card yolo filesystem tools (create/edit/move/copy/delete), SD-only boundary | **DONE** (final build passed) | 0.8.0 |
 | WP7 | §10 | Embedded MicroPython component, on-demand only, SD-only write sandbox | **DONE** (IDF 6.1 build passed) | 0.9.0 |
 | WP8 | §11 | Build attempt (IDF 6.1), push attempt, final DoD verification checklist | **DONE** | 1.0.0 |
+| WP9 | operator follow-up | Merged 16 MB flash image; offline image verification; flash helper | **DONE** | 1.1.0 |
+| WP10 | operator follow-up | Secondary board-spec BSP repo for board developers | **BLOCKED on hardware** (H1) | — |
 
-**Order rationale:** WP1 establishes the display/touch bus and boot sequence every other package depends on. WP4 is done early because WP3/WP6/WP7 write through the storage policy. WP8 is last so it verifies the complete revision. WP0 exists because the operator requires documentation/versioning to lead implementation so interruptions cannot corrupt chronological progress.
+**Order rationale:** WP1 establishes the display/touch bus and boot sequence every other package depends on. WP4 is done early because WP3/WP6/WP7 write through the storage policy. WP8 is last so it verifies the complete revision. WP9 produces the distributable image; WP10 is gated by the operator on physical hardware passing. WP0 exists because the operator requires documentation/versioning to lead implementation so interruptions cannot corrupt chronological progress.
 
 ---
 
 ## Increment log (append-only; newest first)
+
+### 1.1.0 — 2026-11-18 — WP9: merged Genesis flash image
+
+- **Summary:** Produced the single-file 16 MB merged image for the Waveshare ESP32-S3-Touch-AMOLED-1.8 Rev 1 board and verified it byte-for-byte offline. Added a flash helper script and a release manifest. Physical hardware verification was attempted and is blocked (H1: no device attached), so the operator-gated secondary BSP repo (WP10) was not created; its content manifest is prepared below.
+- **Files touched:** `docs/MERGED_IMAGE.md` (new), `scripts/flash_genesis_merged.sh` (new), `VERSION.md`, `CHANGELOG.md`, this ledger.
+- **Verification result:** `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py merge-bin' > /tmp/opencode/csaw_merge_bin.log 2>&1` → exit 0, `Wrote 0xff0000 bytes to file 'merged-binary.bin'`, SHA-256 `bc99701b6d3d819de63e436391d5809129d5158af05313dd27dc6f4abc66d2ee`. Python region byte comparison → `MERGED_IMAGE_INTEGRITY = PASS`; all gaps `0xFF`. `esptool image-info`: bootloader checksum `0x86` valid, app checksum `0x08` valid, both Chip ID 9 / 16MB / DIO / 80m / ESP-IDF v6.1. `gen_esp32part.py`: table verifies OK. Hardware: `ls /dev/ttyUSB* /dev/ttyACM*` → none; `lsusb` → root hubs only; `esptool --chip esp32s3 chip-id` → `Could not connect to an Espressif device on any of the 8 available serial ports`.
+- **Next:** WP10 — await operator decision, then create BSP repo.
 
 ### 1.0.0 — 2026-11-18 — WP8: final delivery and DoD verification
 
@@ -159,3 +168,39 @@ head -20 CHANGELOG.md                             # latest increment + verificat
 | 8 | On-device keyboard/chat UI primary; legacy channels inert | `components/csaw_ui/**`, `main/channels/legacy_channels.c`, `docs/ON_DEVICE_UI.md` | PASS |
 | 9 | RTC/alarm, wake, and SD yolo tools wired | `main/power/csaw_power.c`, `main/cron/cron_service.c`, `main/tools/tool_registry.c` (24 tools), `docs/POWER_RTC.md`, `docs/SD_CARD_TOOLS.md` | PASS |
 | 10 | MicroPython on-demand, SD-only writes | `main/python/csaw_python_vm.c`, frozen `_boot.py` + `csaw_sandbox.py`, `docs/MICROPYTHON.md` | PASS |
+
+---
+
+## WP10 — secondary BSP repository (hardware-gated, prepared not created)
+
+The operator specified: create a secondary BSP repo "if hardware passes", solely
+for board developers needing this exact board spec support in their own
+projects. Hardware **cannot pass here** (H1, see `docs/MERGED_IMAGE.md` §6), so
+no repo has been created. The content manifest below is prepared so that a
+"go" decision is a single mechanical step. Everything in it is derived from the
+build-verified firmware, not guessed.
+
+| Proposed path | Source in `csaw_esp32s3_genesis` | Purpose |
+| --- | --- | --- |
+| `README.md` | `docs/HARDWARE_BRINGUP.md`, `docs/DISPLAY_BRINGUP.md` | Board spec, pin table, quick-start |
+| `config/hardware.md` | `config/hardware.md` | Rev 1 pin map: I2C SDA15/SCL14, touch INT GPIO21, SDMMC CLK2/CMD1/D0=3, PMU 0x34, RTC 0x51, codec 0x18, IMU 0x6B/0x6A |
+| `config/board.cmake` / `config/sdkconfig.board` | `sdkconfig.defaults.esp32s3`, `components/csaw_micropython/boards/CSAW_ESP32S3/*` | IDF 6.1 target, 16 MB flash/DIO/80m, octal PSRAM, partition table |
+| `components/csaw_hal/**` | `components/csaw_hal/**` | Native ESP-IDF 6.1 HAL with literal expander → PMU → SH8601 bringup and ≥30 % brightness gate |
+| `components/cjson/**` | `components/cjson/**` | cJSON v1.7.19 (IDF 6.1 removed `json`) |
+| `components/sh8601/**`, `components/ft3168/**` (if split out) | `components/csaw_hal/csaw_hal.c` register table | Display/touch drivers extracted as reusable components |
+| `config/partitions.csv` | `partitions.csv` | 2 MB ota_0/ota_1, 12 MB SPIFFS, coredump |
+| `docs/HARDWARE_SOURCES.md` | `docs/HARDWARE_SOURCES.md` | Waveshare/Espressif source links for every hardware decision |
+| `docs/PIN_MAP.md` | `docs/HARDWARE_BRINGUP.md` | Every pin, bus setting, reset delay and register write |
+| `docs/VERIFIED_BUILD.md` | `docs/MERGED_IMAGE.md`, `/tmp/opencode/csaw_wp7_build23.log` | Exact IDF 6.1 toolchain, build/merge commands, artifact hash — **not** a claim of boot success |
+
+The BSP repo must **not** contain the agent/provider/UI/MicroPython firmware:
+its scope is board spec support only, so downstream projects bring their own
+application. Proposed name: `rrdlabs/csaw-genesis-bsp` (private or public per
+operator choice). It must be marked "hardware verification pending" until a
+physical Rev 1 board is flashed and the bringup log confirms the order and
+brightness gate.
+
+**Operator decision required:** (a) create the BSP repo now from this
+build-verified manifest and label hardware verification pending, or (b) hold
+until the board is attached and flashed. No ambiguity is being used to skip the
+requirement — the work is prepared and the gate is recorded explicitly.
