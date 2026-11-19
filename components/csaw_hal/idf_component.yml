@@ -1,0 +1,7 @@
+## CsAW HAL — native ESP-IDF 6.1 implementation for board Rev 1.
+## The vendor example's "idf: >=5.5,<6.1" constraint is intentionally not used
+## (operator directive: BSP allows >=5.3; CsAW targets 6.1+ and recreates
+## incompatible components).
+dependencies:
+  idf:
+    version: '>=6.1'

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1528" height="492" viewBox="0 0 1528 492" role="img" aria-label="CsAW banner">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#36d1dc"/>
+      <stop offset="100%" stop-color="#5b86e5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1528" height="492" rx="28" fill="url(#bg)"/>
+  <rect x="28" y="28" width="1472" height="436" rx="20" fill="none" stroke="url(#accent)" stroke-width="3"/>
+  <text x="764" y="238" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="150" font-weight="700" fill="#ffffff">CsAW</text>
+  <text x="764" y="318" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="42" fill="#9fb3d9">Pocket AI Agent on ESP32-S3</text>
+  <text x="764" y="378" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="28" fill="#6f86b5">Touch + Voice + SD Card + Free Model Routers</text>
+</svg>

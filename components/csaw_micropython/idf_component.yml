@@ -1,0 +1,12 @@
+## CsAW MicroPython component dependencies (ESP-IDF 6.1).
+##
+## MicroPython's ESP32 port includes <mdns.h> from network_wlan.c/modsocket.c.
+## In ESP-IDF 6.x mdns is no longer a core component: it is provided by the
+## ESP Component Registry. Declaring it here (instead of in REQUIRES) is the
+## supported setup; esp_libc (formerly newlib) is automatic and must NOT be
+## listed. The old "usb" umbrella component is replaced by the IDF 6.1 HAL /
+## driver components listed in ports/esp32/esp32_common.cmake.
+dependencies:
+  idf:
+    version: ">=6.1"
+  espressif/mdns: "^1.15.1"

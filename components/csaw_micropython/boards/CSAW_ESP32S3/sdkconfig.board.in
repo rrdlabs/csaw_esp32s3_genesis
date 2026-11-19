@@ -1,0 +1,20 @@
+# CsAW MicroPython board overrides (processed by configure_file()).
+# The project owns the partition table: never let MicroPython replace it.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# Match the CsAW ESP32-S3 board defaults (16 MB flash, octal PSRAM, 240 MHz).
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=n
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=n
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
+# USB Serial/JTAG remains the CsAW diagnostics console.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# MicroPython's baseline fragment silences logs; keep CsAW diagnostics visible.
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y

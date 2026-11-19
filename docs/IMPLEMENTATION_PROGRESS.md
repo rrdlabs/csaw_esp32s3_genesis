@@ -1,0 +1,161 @@
+# CsAW Implementation Progress Ledger
+
+**Purpose:** Chronological, append-only record of implementation work. Every change is versioned in [VERSION.md](../VERSION.md) and appended to [CHANGELOG.md](../CHANGELOG.md) with date, version, summary, **files touched**, and **verification result**. If work is interrupted, resume from the *Current state* block below — do not restart or guess what was done.
+
+**Governing spec:** `AGENTS.md` §§3–11 (workspace root). **Task 1 (`agent-preflight`) is complete.** Implementation is authorized; work proceeds in the work packages below.
+
+---
+
+## Current state (update this block on every increment)
+
+| Field | Value |
+| --- | --- |
+| Last completed increment | WP8 final delivery / Definition of Done verification (v1.0.0) |
+| Current version | `1.0.0` |
+| Active work package | None — WP0–WP8 complete; the single Section 1–10 revision is delivered |
+| Next concrete action | None. Optional: review the pushed repository and flash to hardware |
+| Last verification | Final IDF 6.1 build PASSED (`/tmp/opencode/csaw_wp7_build23.log`, `Project build complete`, `csaw.bin` 0x1ecac0); branding grep zero hits; push result recorded below |
+| Commands attempted | WP1–WP4 as logged below; WP5 `csaw_wp5_build1.log` (`newlib`), WP7 `csaw_wp7_build1..23.log` (all compile/link blockers resolved, final build green). Exact commands are quoted in the increment log and CHANGELOG |
+| Blockers | None open. All preflight and IDF 6.1 blockers resolved and documented |
+| Stop/await condition | Revision complete; stop here unless the operator requests hardware flashing or repo visibility changes |
+
+### Interruption recovery (run these first)
+
+```bash
+source /home/d31337m3/devenv/env-6.1.sh          # Warroom IDF 6.1; never source export.sh directly
+cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis
+git status --short                               # uncommitted work is the live state
+idf.py --version                                 # expect: ESP-IDF v6.1
+head -20 docs/IMPLEMENTATION_PROGRESS.md          # this block
+head -20 CHANGELOG.md                             # latest increment + verification result
+```
+
+---
+
+## Work packages (AGENTS.md mapping)
+
+| WP | Section | Deliverable | Status | Version introduced |
+| --- | --- | --- | --- | --- |
+| WP0 | §11 (tracking) | Progress ledger, changelog template, version bump | **DONE** | 0.3.0 |
+| WP1 | §4 | Hardware bringup: IO expander → PMU → SH8601 AMOLED (≥30% brightness gate), touch, audio, RTC, 1-bit SDMMC, IMU; pin/delay/register doc | **DONE** (IDF 6.1 build passed) | 0.3.1 / 0.3.2 |
+| WP2 | §5 | Provider abstraction: Kilo free default → OpenCode fallback → others; remove legacy paid-provider paths | **DONE** (IDF 6.1 build passed) | 0.4.0 / 0.4.1 |
+| WP3 | §6 | LVGL on-screen keyboard + chat UI on same agent loop/message bus; legacy Telegram/Feishu inert | **DONE** (IDF 6.1 build passed) | 0.5.0 / 0.5.1 / 0.5.2 |
+| WP4 | §7 | Storage split: flash (config/long-term/secrets) vs SD (sessions/history/cache/logs/temp); path schema + rotation limits | **DONE** (IDF 6.1 build passed) | 0.6.0 / 0.6.1 / 0.6.2 |
+| WP5 | §8 | Power/RTC/low-power: charging, battery status, energy modes, wake sources, RTC alarms/timers → cron | **DONE** (final build passed) | 0.7.0 |
+| WP6 | §9 | SD-card yolo filesystem tools (create/edit/move/copy/delete), SD-only boundary | **DONE** (final build passed) | 0.8.0 |
+| WP7 | §10 | Embedded MicroPython component, on-demand only, SD-only write sandbox | **DONE** (IDF 6.1 build passed) | 0.9.0 |
+| WP8 | §11 | Build attempt (IDF 6.1), push attempt, final DoD verification checklist | **DONE** | 1.0.0 |
+
+**Order rationale:** WP1 establishes the display/touch bus and boot sequence every other package depends on. WP4 is done early because WP3/WP6/WP7 write through the storage policy. WP8 is last so it verifies the complete revision. WP0 exists because the operator requires documentation/versioning to lead implementation so interruptions cannot corrupt chronological progress.
+
+---
+
+## Increment log (append-only; newest first)
+
+### 1.0.0 — 2026-11-18 — WP8: final delivery and DoD verification
+
+- **Summary:** Verified the complete Section 1–10 revision as one package. Clean IDF 6.1 build, GitHub push, final branding/storage/bringup checks and the DoD checklist below. README clone URLs point at the delivered repository.
+- **Files touched:** `CHANGELOG.md`, `VERSION.md`, this ledger, `README.md`.
+- **Verification result:** build command `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py build' > /tmp/opencode/csaw_wp7_build23.log 2>&1; echo "exit=$?"` → `exit=0`, `Project build complete. To flash, run:`, `csaw.bin binary size 0x1ecac0 bytes ... 0x13540 bytes (4%) free`. Branding: `grep -rni 'mimiclaw' --exclude-dir=.git --exclude-dir=build .` → 0 hits; `find . -path './.git' -prune -o -path './build' -prune -o -iname '*mimi*' -print` → 0 hits. Push: `gh repo create rrdlabs/csaw_esp32s3_genesis --private --confirm` → `https://github.com/rrdlabs/csaw_esp32s3_genesis` (exit 0); `git push -u origin master` → `* [new branch] master -> master`, tracking set, exit 0
+- **Next:** none — revision complete.
+
+### 0.9.0 — 2026-11-18 — WP7: on-demand MicroPython VM
+
+- **Summary:** Vendored MicroPython v1.29.0 core, lib and prebuilt mpy-cross as an on-demand component driven only by `python_init` / `python_exec` / `python_eval`; no boot execution. Frozen `_boot.py` maps the HAL's IDF-VFS SD mount into Python via `vfs.VfsPosix`, and `csaw_sandbox.py` restricts writes to `/sd/csaw/python` while removing flash/NVS/remount APIs. Resolved the complete IDF 6.1 incompatibility set (enumerated in `docs/MICROPYTHON.md` §9), including the oofatfs/IDF-fatfs symbol collision and the lwip `memp_*` wrap symbols.
+- **Files touched:** `components/csaw_micropython/**`, `main/python/csaw_python_vm.{c,h}` (new), `main/cli/serial_cli.c`, `main/CMakeLists.txt`, root `CMakeLists.txt`, `sdkconfig.defaults.esp32s3`, `docs/MICROPYTHON.md` (new), CHANGELOG/VERSION/ledger.
+- **Verification result:** iterative builds `csaw_wp7_build5.log` … `csaw_wp7_build22.log` each recorded one concrete blocker and its fix; final `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py build' > /tmp/opencode/csaw_wp7_build23.log 2>&1; echo "exit=$?"` → `exit=0`, `Project build complete`. Frozen mpy-cross reports `MicroPython v1.29.0 on 2026-08-29; mpy-cross emitting mpy v6.3`.
+- **Next:** WP8 — final build/push/DoD.
+
+### 0.8.0 — 2026-11-18 — WP6: SD-card yolo filesystem tools
+
+- **Summary:** Added `create_dir`, `move`, `copy` and `delete` agent tools with no confirmation prompt, all bounded by the SD workspace and audited to the SD log. `MAX_TOOLS` 16 → 24. Documented signatures, safety boundary and examples.
+- **Files touched:** `main/tools/tool_files.{c,h}`, `main/tools/tool_registry.c`, `docs/SD_CARD_TOOLS.md` (new), CHANGELOG/VERSION/ledger.
+- **Verification result:** `grep -n 'MAX_TOOLS' main/tools/tool_registry.c` → `24`; all four execute callbacks registered; path validation rejects non-`CSAW_SD_ROOT` paths. Built as part of the final clean build.
+- **Next:** WP7 — embedded MicroPython.
+
+### 0.7.0 — 2026-11-18 — WP5: power, RTC and low-power
+
+- **Summary:** Implemented AXP2101 battery/backup-cell charging and status, PCF85063A alarms/timers, QMI8658 wake-on-shake, touch/wake-word wake sources, energy-save modes, status reporting to UI/CLI and RTC-alarm-driven cron scheduling. Documented the power state machine, thresholds and alarm semantics.
+- **Files touched:** `components/csaw_hal/csaw_hal.c` + header, `main/power/csaw_power.{c,h}` (new), `main/cli/serial_cli.c`, `main/csaw.c`, `main/CMakeLists.txt`, `main/cron/cron_service.c`, `main/agent/agent_loop.c`, `docs/POWER_RTC.md` (new), `docs/HARDWARE_BRINGUP.md`, CHANGELOG/VERSION/ledger.
+- **Verification result:** static symbol/doc review passed; the first WP5 build (`/tmp/opencode/csaw_wp5_build1.log`) exposed the IDF 6.1 `newlib` component error, resolved with the WP7 component work and confirmed by the final green build.
+- **Next:** WP6 — SD filesystem tools.
+
+### 0.6.2 — 2026-11-18 — WP4 verification ledger reconciliation
+
+- **Summary:** Corrected the stale WP4 work-package status and 0.6.0 increment log to record the final successful IDF 6.1 build from `/tmp/opencode/csaw_wp4_build2.log`. No firmware behavior changed.
+- **Files touched:** `docs/IMPLEMENTATION_PROGRESS.md`, CHANGELOG/VERSION.
+- **Verification result:** Re-read `/tmp/opencode/csaw_wp4_build2.log` filter: `Project build complete. To flash, run:`; ledger and changelog now both reference the exact command and log path.
+- **Next:** WP5 — power/RTC/low-power.
+
+### 0.6.0 — 2026-11-18 — WP4: flash/SD storage split
+
+- **Summary:** Added `csaw_storage` as the single enforcement point for the AGENTS.md §7 policy. Sessions, daily/working memory, logs and temp/tool files now live under `/sd/csaw/*` with rotation and file-count limits; flash keeps only long-term memory, config and provider secrets. Added SD audit logging and `storage_status` CLI diagnostics.
+- **Files touched:** `main/storage/csaw_storage.{c,h}` (new), `main/csaw_config.h`, `main/memory/session_mgr.c`, `main/memory/memory_store.c`, `main/tools/tool_files.{c,h}`, `main/tools/tool_registry.c`, `main/agent/context_builder.c`, `main/agent/agent_loop.c`, `main/csaw.c`, `main/cli/serial_cli.c`, `main/CMakeLists.txt`, `docs/STORAGE_POLICY.md` (new), `config/storage.md`, `docs/ARCHITECTURE.md`, `README.md`, ledger/CHANGELOG/VERSION.
+- **Verification result:** Static review: no remaining `CSAW_SPIFFS_SESSION_DIR`; file tools reject `/spiffs`; every high-churn writer routes through `csaw_storage_*`. Final build: `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py build' > /tmp/opencode/csaw_wp4_build2.log 2>&1; grep -E 'error:|warning:|FAILED|Project build complete|ninja: build stopped|CMake Error' /tmp/opencode/csaw_wp4_build2.log | tail -40` → `Project build complete. To flash, run:` (after the 0.6.1 fix; no errors/warnings).
+- **Next:** WP5 — power/RTC/low-power.
+
+### 0.5.2 — 2026-11-18 — WP3 compile fix: ESP-IDF 6.1 panel ops header
+
+- **Summary:** Added the missing `esp_lcd_panel_ops.h` include in `csaw_ui.c`; IDF 6.1 declares `esp_lcd_panel_draw_bitmap()` there, and the implicit declaration broke compilation of the LVGL flush callback.
+- **Files touched:** `components/csaw_ui/csaw_ui.c`, CHANGELOG/VERSION, this ledger.
+- **Verification result:** Rebuild command `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py build' > /tmp/opencode/csaw_wp3_build4.log 2>&1; grep -E 'error:|FAILED|Project build complete|ninja: build stopped|CMake Error' /tmp/opencode/csaw_wp3_build4.log | tail -30` → `Project build complete. To flash, run:`; no errors. Previous attempt (`build3.log`) failed with the implicit declaration.
+- **Next:** WP4 — storage split (flash vs SD card).
+
+### 0.5.1 — 2026-11-18 — WP3 build fix: vendored LVGL demo/example sources
+
+- **Summary:** Fixed two CMake failures introduced by vendoring LVGL v9.6 without its upstream `examples/` and `demos/` trees: `esp.cmake` validates those `INCLUDE_DIRS`, and Kconfig defaults `LV_BUILD_EXAMPLES=y`/`LV_BUILD_DEMOS=y` add `demos/lv_demos.c` as a source. Added placeholder directories and disabled both options in the live `sdkconfig` and `sdkconfig.defaults.esp32s3` so clean builds stay reproducible.
+- **Files touched:** `components/lvgl/examples/.gitkeep`, `components/lvgl/demos/.gitkeep` (new), `sdkconfig`, `sdkconfig.defaults.esp32s3`, CHANGELOG/VERSION, this ledger.
+- **Verification result:** Build with this fix (`/tmp/opencode/csaw_wp3_build3.log`) passed CMake and reached compilation; the remaining compile error was the 0.5.2 header fix. Final combined verification `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py build' > /tmp/opencode/csaw_wp3_build4.log 2>&1; grep -E 'error:|FAILED|Project build complete|ninja: build stopped|CMake Error' /tmp/opencode/csaw_wp3_build4.log | tail -30` → `Project build complete. To flash, run:`. Prior attempt (`/tmp/opencode/csaw_wp3_build2.log`) failed with `Cannot find source file: .../components/lvgl/demos/lv_demos.c` and `No SOURCES given to target: __idf_lvgl`.
+- **Next:** WP4 — storage split (flash vs SD card).
+
+### 0.5.0 — 2026-11-18 — WP3: on-device keyboard/chat UI
+
+- **Summary:** Vendored LVGL v9.6 as a local component; added a native SH8601 `esp_lcd_panel_t` flush path and FT3168 touch reads to the HAL; built the chat screen with on-screen keyboard; bridged keyboard submissions into the inbound message bus on channel `ui` and routed outbound `ui` replies back to the screen. Telegram/Feishu are now inert by default with an NVS-backed opt-in CLI and legacy UI labels.
+- **Files touched:** `components/lvgl/**` (new), `components/csaw_hal/csaw_hal.c` + header, `components/csaw_ui/**` (new), `main/csaw.c`, `main/bus/message_bus.h`, `main/channels/legacy_channels.{c,h}` (new), `main/CMakeLists.txt`, `main/csaw_config.h`, `main/cli/serial_cli.c`, `main/onboard/onboard_html.h`, `docs/ON_DEVICE_UI.md` (new), `README.md`, ledger/CHANGELOG/VERSION.
+- **Verification result:** Static review passed: brightness gate precedes panel creation and UI init; keyboard READY → `ui_send_bridge` → inbound bus → agent loop → outbound `ui` → `csaw_ui_show_response`; legacy channels skipped at init/start and outbound dispatch when disabled. Final build command `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py build' > /tmp/opencode/csaw_wp3_build4.log 2>&1; grep -E 'error:|FAILED|Project build complete|ninja: build stopped|CMake Error' /tmp/opencode/csaw_wp3_build4.log | tail -30` → `Project build complete. To flash, run:` (after the 0.5.1 and 0.5.2 fixes).
+- **Next:** WP4 — storage split (flash vs SD card).
+
+### 0.4.0 — 2026-11-18 — WP2: free-provider abstraction
+
+- **Summary:** Replaced the dual paid-backend LLM proxy with a free-only ordered chain (Kilo → OpenCode → OpenRouter). Added runtime config for provider order, active entry, endpoints, models and tokens; all persisted in flash/NVS. Failover advances in memory only. Purged paid-provider strings from code, CLI, onboarding UI, docs and examples.
+- **Files touched:** `main/llm/provider_chain.{c,h}` (new), `main/llm/llm_proxy.{c,h}`, `main/csaw_config.h`, `main/CMakeLists.txt`, `main/cli/serial_cli.c`, `main/onboard/onboard_html.h`, `main/csaw_secrets.h.example`, `main/agent/agent_loop.h`, `config/providers.md`, `docs/PROVIDER_CONFIG.md`, `docs/ARCHITECTURE.md`, `docs/TODO.md`, `docs/im-integration/FEISHU_SETUP.md`, `README*.md`, `skills/deploy/**`, `.github/workflows/release.yml`, ledger/CHANGELOG/VERSION.
+- **Verification result:** Live catalog fetches confirmed Kilo `kilo-auto/free`, OpenCode `mimo-v2.6-flash-free` with chat base `https://opencode.ai/inference/openai/v1`, OpenRouter `inclusionai/ling-3.2-flash:free`. Residual-string scan returned only the official OpenCode URL path segment containing the legacy compatibility word; documented as a wire-format path, not a provider choice. Build command `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py build' 2>&1 | grep -E 'error:|FAILED|Built target|Project build complete|ninja: build stopped|IndexError|CMake Error' | tail -30` → `Project build complete` (v0.4.1).
+- **Next:** WP3 — on-device LVGL keyboard/chat UI.
+
+### 0.3.2 — 2026-11-18 — WP1 build verification + repo hygiene
+
+- **Summary:** Completed WP1 verification: recorded the exact build command chain and its successful result, documented the three IDF 6.1/GCC 15 compiler fixes, and removed the inherited `components/` ignore rule so the new HAL and vendored cJSON are part of the delivered repo.
+- **Files touched:** `main/wifi/wifi_manager.c`, `main/heartbeat/heartbeat.c`, `main/agent/agent_loop.c` (compiler fixes), `.gitignore`, ledger/CHANGELOG/VERSION.
+- **Verification result:** Build attempt 3 command `cd /home/d31337m3/projects/csaw/csaw_esp32s3_genesis && bash -c 'source /home/d31337m3/devenv/env-6.1.sh >/dev/null 2>&1; idf.py build' 2>&1 | grep -E 'error:|FAILED|Built target|Project build complete|ninja: build stopped|IndexError|CMake Error' | tail -25` → `Project build complete. To flash, run:`; no errors. Real errors from build attempt 2 were read from `build/log/idf_py_stdout_output_589043` because IDF's hint generator crashed with `IndexError: Replacement index 2 out of range for positional args tuple`: (a) `WIFI_REASON_ASSOC_EXPIRE` undeclared, (b) `xTaskCreate` incompatible task signature, (c) GCC 15 `-Werror=hex-escape` in the agent status string. All fixed before attempt 3.
+- **Next:** WP2 — provider abstraction.
+
+### 0.3.1 — 2026-11-18 — WP1: hardware bringup HAL (build in progress)
+
+- **Summary:** Added native ESP-IDF 6.1 HAL implementing the literal IO expander → PMU → SH8601 init chain, SH8601 QSPI register table, ≥30% brightness gate before UI, plus touch/audio/RTC/SDMMC/IMU stages. Recreated vendor QSPI macros with native APIs; vendored cJSON after IDF 6.1 removed the `json` component; switched project idf constraint to `>=6.1` and target to esp32s3.
+- **Files touched:** `components/csaw_hal/{CMakeLists.txt,idf_component.yml,include/csaw_hal.h,csaw_hal.c}` (new), `components/cjson/{CMakeLists.txt,cJSON.c,cJSON.h}` (new, v1.7.19), `main/csaw.c` (call HAL before services), `main/CMakeLists.txt` (`csaw_hal`, `json`→`cjson`), `main/idf_component.yml` (`>=6.1`), `docs/HARDWARE_BRINGUP.md` (new), ledger/CHANGELOG/VERSION.
+- **Verification result:** Source review complete: order, register table and brightness assertion match `docs/DISPLAY_BRINGUP.md`. Build attempt 1: `source /home/d31337m3/devenv/env-6.1.sh; idf.py build` → CMake error `Failed to resolve component 'json' required by component 'main': unknown name` (target also defaulted to esp32). Fixed by vendoring cJSON and setting target. Build attempt 2 (in progress at time of writing): `source /home/d31337m3/devenv/env-6.1.sh; idf.py set-target esp32s3 && idf.py build` — result to be appended here when available.
+- **Next:** WP2 — provider abstraction.
+
+### 0.3.0 — 2026-11-18 — WP0: implementation tracking infrastructure
+
+- **Summary:** Established this ledger, an explicit changelog entry format, and version bump before any firmware code changes.
+- **Files touched:** `docs/IMPLEMENTATION_PROGRESS.md` (new), `CHANGELOG.md` (template + entry), `VERSION.md`.
+- **Verification result:** Ledger current-state block, work-package table and recovery commands present; changelog template mandates date/version/summary/files touched/verification result; VERSION.md = 0.3.0.
+- **Next:** WP1 — hardware bringup foundation.
+
+---
+
+## Definition of Done — final verification (AGENTS.md §11)
+
+| # | Requirement | Evidence | Result |
+| --- | --- | --- | --- |
+| 1 | Zero unapproved donor-brand strings | `grep -rni 'mimiclaw' --exclude-dir=.git --exclude-dir=build .` → 0 hits; filename scan → 0 hits; incidental English "mimic" in vendored upstream comments annotated in `docs/MICROPYTHON.md` | PASS |
+| 2 | Clean ESP-IDF 6.1 build attempt recorded | `/tmp/opencode/csaw_wp7_build23.log`, exact command quoted above, exit `0`, `Project build complete`, `csaw.bin` 0x1ecac0 | PASS |
+| 3 | GitHub push attempt recorded | `gh repo create rrdlabs/csaw_esp32s3_genesis --private --confirm` → `https://github.com/rrdlabs/csaw_esp32s3_genesis` (exit 0); `git push -u origin master` → `* [new branch] master -> master`, tracking set, exit 0 | PASS |
+| 4 | Bringup order + ≥30% brightness verified in code/docs | `components/csaw_hal/csaw_hal.c:1094-1104` literal IO expander → PMU → SH8601; gate at `csaw_hal.c:489-496`; `main/csaw.c:157-165` asserts before UI; `docs/HARDWARE_BRINGUP.md` | PASS |
+| 5 | Storage split verified in code/docs | `main/storage/csaw_storage.c`, `main/memory/session_mgr.c`, `main/tools/tool_files.c`, `docs/STORAGE_POLICY.md`; flash keeps only config/long-term memory/secrets | PASS |
+| 6 | All docs and changelog entries present | `VERSION.md` = 1.0.0; `CHANGELOG.md` entries 0.7.0/0.8.0/0.9.0/1.0.0; `docs/` brings up, power/RTC, SD tools, MicroPython, UI, storage, providers, preflight, architecture | PASS |
+| 7 | Free-only provider chain | `config/providers.md`, `docs/PROVIDER_CONFIG.md`, `main/llm/provider_chain.c`: Kilo (default) → OpenCode → OpenRouter | PASS |
+| 8 | On-device keyboard/chat UI primary; legacy channels inert | `components/csaw_ui/**`, `main/channels/legacy_channels.c`, `docs/ON_DEVICE_UI.md` | PASS |
+| 9 | RTC/alarm, wake, and SD yolo tools wired | `main/power/csaw_power.c`, `main/cron/cron_service.c`, `main/tools/tool_registry.c` (24 tools), `docs/POWER_RTC.md`, `docs/SD_CARD_TOOLS.md` | PASS |
+| 10 | MicroPython on-demand, SD-only writes | `main/python/csaw_python_vm.c`, frozen `_boot.py` + `csaw_sandbox.py`, `docs/MICROPYTHON.md` | PASS |
